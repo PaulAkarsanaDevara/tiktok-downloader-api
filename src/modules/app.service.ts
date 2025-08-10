@@ -4,6 +4,7 @@ import logger from "../utils/logger";
 import axios from "axios";
 import path from "path";
 import fs from "fs";
+import redis from "../config/redis";
 
 @injectable()
 export class AppService {
@@ -30,6 +31,32 @@ export class AppService {
   async downloadVideo(url: string): Promise<string> {
       logger.info(`Downloading TikTok video from: ${url}`);
 
+      // Cek cache Redis
+      const cachedFileName = await redis.get(`tiktok:${url}`);
+      if (cachedFileName) {
+        const cachedFilePath = path.join(path.resolve(process.env.APP_TEMP_DIR || "./downloads"), cachedFileName);
+        if (fs.existsSync(cachedFilePath)) {
+          logger.info(`Cache hit: ${url}`);
+          return cachedFilePath;
+        } else {
+          logger.warn(`Cache entry exists but file missing, removing Redis key`);
+          await redis.del(`tiktok:${url}`);
+        }
+      } else {
+          // Redis cache expired → cek file lokal
+            const filePrefix = "tiktok_";
+            const existingFile = fs
+              .readdirSync(path.resolve(process.env.APP_TEMP_DIR || "./downloads"))
+              .find(file => file.startsWith(filePrefix) && file.endsWith(".mp4"));
+
+            if (existingFile) {
+              const existingPath = path.join(path.resolve(process.env.APP_TEMP_DIR || "./downloads"), existingFile);
+              logger.info(`Cache expired but file still exists: Restoring cache for ${url}`);
+              await redis.set(`tiktok:${url}`, existingFile, "EX", 3600);
+              return existingPath;
+        }
+      }
+
       const apiUrl = `${process.env.TIKTOK_API_URL}?url=${encodeURIComponent(url)}`;
       const { data } = await axios.get(apiUrl);
 
@@ -43,13 +70,15 @@ export class AppService {
         filePath: path.join(path.resolve(process.env.APP_TEMP_DIR || "./downloads"), filename), 
       }
 
-      const { videoUrl, filePath  } = payload;
+      const { videoUrl, fileName, filePath  } = payload;
 
       const videoStream = await axios.get(videoUrl, { responseType: "arraybuffer" });
 
       fs.writeFileSync(filePath, videoStream.data);
       
       logger.info(`Video saved to: ${filePath}`);
+
+      await redis.set(`tiktok:${url}`, fileName, "EX", 3600);
 
       return filePath;
   }
