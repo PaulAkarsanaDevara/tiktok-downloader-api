@@ -5,6 +5,7 @@ import axios from "axios";
 import path from "path";
 import fs from "fs";
 import redis from "../config/redis";
+import { ITikTokPreview } from "../interfaces/app.interface";
 
 @injectable()
 export class AppService {
@@ -81,6 +82,28 @@ export class AppService {
       await redis.set(`tiktok:${url}`, fileName, "EX", 3600);
 
       return filePath;
+  }
+
+  async previewVideo(url: string): Promise<ITikTokPreview> {
+     const apiUrl = `${process.env.TIKTOK_API_URL}?url=${encodeURIComponent(url)}`;
+     const { data } = await axios.get(apiUrl);
+
+     if(data.code != 0) throw new Error("Failed to fetch TikTok video metadata");
+
+    //  console.log({data});
+     const payload = {
+        username: data.data.author?.unique_id || "unknown",
+        nickname: data.data.author?.nickname || "",
+        videoId: data.data.id || "",
+        description: data.data.title || "",
+        duration: data.data.duration || 0,
+        cover: data.data.cover || "",
+        origin_cover: data.data.origin_cover || "",
+        playUrl: data.data.play || "",
+        playMusic: data.data.music || "",
+     }
+
+     return payload
   }
 
 }

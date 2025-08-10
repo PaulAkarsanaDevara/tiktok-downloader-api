@@ -28,4 +28,18 @@ export class AppController {
     }
 
   }
+
+  async preview(req: Request, res: Response) {
+    try {
+      const { url } = req.query;
+      if (!url || typeof url !== "string") {
+        return res.status(400).json({ error: "Missing 'url' query parameter" });
+      }
+
+      const result = await this.appService.previewVideo(url);
+      res.json({status: "OK", data: result });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  }
 }

@@ -9,6 +9,10 @@ const appService = container.resolve(AppService);
 
 const router = Router();
 
+router.get('/preview', (req, res) =>  {
+   appService.videoRateLimiter,
+   appController.preview(req, res)
+});
 router.post("/download", 
     (req, res) =>   {
       appService.videoRateLimiter,
