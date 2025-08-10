@@ -3,12 +3,19 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import morgan from 'morgan';
-import { errorHandler } from './utils/errorHandler';
 import appRoutes from "./routes/app.route";
+import path from "path";
+import fs from "fs";
+import { errorHandler } from './utils/errorHandler';
 
 dotenv.config();
 
 const app = express();
+
+if (!fs.existsSync(path.resolve(process.env.APP_TEMP_DIR || "./downloads"))) {
+  fs.mkdirSync(path.resolve(process.env.APP_TEMP_DIR || "./downloads"), { recursive: true });
+
+}
 
 app.use(cors());
 app.use(express.json());

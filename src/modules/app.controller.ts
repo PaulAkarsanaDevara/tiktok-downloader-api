@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { inject, injectable } from "tsyringe";
 import { AppService } from "./app.service";
 import { Request, Response } from "express";
-
+import { scheduleFileDelete } from "../utils/scheduleFileDelete";
 @injectable()
 export class AppController {
   constructor(@inject("AppService") private appService: AppService) {}
@@ -17,7 +19,9 @@ export class AppController {
 
       const result = await this.appService.downloadVideo(url);
 
-      res.download(result)
+      res.download(result, (err) => {
+        scheduleFileDelete(result)
+      })
 
     } catch (err: any) {
       res.status(500).json({ message: err.message || "Internal Server Error" });
